@@ -203,7 +203,7 @@ def draw_seq_graph(
     seq_labels: Optional[List[str]] = None,
     layer_spacing: bool = False,
     orientation: Literal["h", "v"] = "h",
-    display_ipython: bool = True,
+    display_ipython: bool = False,
     file_path: Optional[str] = None,
 ) -> go.Figure:
     """
@@ -290,6 +290,11 @@ def draw_seq_graph(
             orientation=orientation,
         )
         sankeys.append(viz)
+        from IPython import embed
+        ex = 0
+        embed()
+        if ex == 1:
+            exit()
 
     if orientation == "h":
         h = max(250 * len(sankeys), 400)

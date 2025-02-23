@@ -36,7 +36,8 @@ attribution_scores: PruneScores = mask_gradient_prune_scores(
     official_edges=None,
     grad_function="logit",
     answer_function="avg_diff",
-    mask_val=0.0,
+    mask_val=None,
+    integrated_grad_samples=10
 )
 
 fig = draw_seq_graph(
