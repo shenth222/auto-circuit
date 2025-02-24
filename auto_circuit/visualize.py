@@ -275,6 +275,38 @@ def draw_seq_graph(
     else:
         intervals = {list(model.edge_dict.keys())[0]: (0, 1)}
 
+    # Add class for calculate percentage of each edge
+    class GraphManager:
+        def __init__(self):
+            self.target_weights = {} # 存储target节点
+            # info = {
+            #     'source_node': {},
+            #     'total_weight': 0
+            # }  # 存储每个target节点的source节点和权重以及总权重
+
+        def add_edge(self, edge, weight, remove_qkv=False):
+            source, target = edge.split('->')
+            if remove_qkv:
+                source = source.replace('.Q', '').replace('.K', '').replace('.V', '')
+                target = target.replace('.Q', '').replace('.K', '').replace('.V', '')
+            if target not in self.target_weights:
+                info = {}
+                info['source_node'] = {source: weight}
+                info['total_weight'] = weight
+                self.target_weights[target] = info
+            else:
+                if source not in self.target_weights[target]['source_node']:    
+                    self.target_weights[target]['source_node'][source] = weight
+                else:
+                    self.target_weights[target]['source_node'][source] += weight
+                self.target_weights[target]['total_weight'] += weight
+        
+        def show_percentage(self):
+            for target, info in self.target_weights.items():
+                print(f"{target} has {len(info['source_node'])} source nodes")
+                for source, weight in info['source_node'].items():
+                    print(f"{source:<12} -> {target:<12} {weight/info['total_weight']:.2%}")
+
     # Draw the sankey for each token position
     sankeys, n_layers = [], 0
     for seq_idx, vert_interval in intervals.items():
@@ -290,11 +322,14 @@ def draw_seq_graph(
             orientation=orientation,
         )
         sankeys.append(viz)
-        from IPython import embed
-        ex = 0
-        embed()
-        if ex == 1:
-            exit()
+        label = [label for label in viz['link']['label'] if label]
+        edge_num = len(label)
+        value = viz['link']['value'][:edge_num]
+        label = [l.split('<br>')[0] for l in label]
+        gm = GraphManager()
+        for i in range(edge_num):
+            gm.add_edge(label[i], value[i], remove_qkv=True)
+        gm.show_percentage()
 
     if orientation == "h":
         h = max(250 * len(sankeys), 400)
