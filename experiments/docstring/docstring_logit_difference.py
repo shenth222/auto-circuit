@@ -1,4 +1,6 @@
 #%%
+import sys
+sys.path.append("/data/shenth/work/auto-circuit")
 from collections import defaultdict
 from copy import deepcopy
 from pathlib import Path
@@ -37,7 +39,8 @@ from auto_circuit.utils.tensor_ops import indices_vals
 #%%
 
 device = t.device("cuda") if t.cuda.is_available() else t.device("cpu")
-model = load_tl_model("attn-only-4l", device)
+model = load_tl_model("/data/shenth/models/gpt2", device)
+# model = load_tl_model("attn-only-4l", device)
 
 path = repo_path_to_abs_path("datasets/docstring_prompts.json")
 _, test_loader = load_datasets_from_json(
@@ -209,11 +212,11 @@ for i, ablation_type in enumerate(ablation_types):
 
 fig.update_yaxes(title_text="Answer Probability", row=1, col=1)
 fig.update_layout(width=700, height=600)
-fig.show()
-folder: Path = repo_path_to_abs_path("figures/figures-12")
+# fig.show()
+folder: Path = repo_path_to_abs_path("figure/figures-12")
 # Save figure as pdf in figures folder
 # fig.write_image(str(folder / "docstring-probability.pdf"))
 # fig.write_image(str(folder / "docstring-probability.svg"))
-# fig.write_image(str(folder / "docstring-probability.png"), scale=4)
+fig.write_image(str(folder / "docstring-probability.png"), scale=4)
 
 #%%

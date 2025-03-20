@@ -194,6 +194,49 @@ def net_viz(
         included_layer_count,
     )
 
+# Add class for calculate percentage of each edge
+class GraphManager:
+    def __init__(self):
+        self.target_weights = {} # 存储target节点
+        # info = {
+        #     'source_node': {},
+        #     'total_weight': 0
+        # }  # 存储每个target节点的source节点和权重以及总权重
+        self.node_list = [] # 存储所有的节点
+
+    def add_edge(self, edge, weight, remove_qkv=False):
+        source, target = edge.split('->')
+        if remove_qkv:
+            source = source.replace('.Q', '').replace('.K', '').replace('.V', '')
+            target = target.replace('.Q', '').replace('.K', '').replace('.V', '')
+        if target not in self.target_weights:
+            info = {}
+            info['source_node'] = {source: weight}
+            info['total_weight'] = weight
+            self.target_weights[target] = info
+        else:
+            if source not in self.target_weights[target]['source_node']:    
+                self.target_weights[target]['source_node'][source] = weight
+            else:
+                self.target_weights[target]['source_node'][source] += weight
+            self.target_weights[target]['total_weight'] += weight
+        
+        if source not in self.node_list:
+            self.node_list.append(source)
+        if target not in self.node_list:
+            self.node_list.append(target)
+    
+    def show_percentage(self):
+        for target, info in self.target_weights.items():
+            print(f"{target} has {len(info['source_node'])} source nodes")
+            for source, weight in info['source_node'].items():
+                print(f"{source:<12} -> {target:<12} {weight/info['total_weight']:.2%}")
+
+    def show_nodes(self):
+        print(self.node_list)
+
+    def get_nodes(self):
+        return self.node_list
 
 def draw_seq_graph(
     model: PatchableModel,
@@ -202,10 +245,11 @@ def draw_seq_graph(
     show_all_seq_pos: bool = False,
     seq_labels: Optional[List[str]] = None,
     layer_spacing: bool = False,
-    orientation: Literal["h", "v"] = "h",
+    orientation: Literal["h", "v"] = "v",
     display_ipython: bool = False,
     file_path: Optional[str] = None,
-) -> go.Figure:
+    draw_fig: bool = True,
+) -> Tuple[Optional[go.Figure], GraphManager]:
     """
     Draw the sankey for all token positions in a
     [`PatchableModel`][auto_circuit.utils.patchable_model.PatchableModel] (drawn
@@ -275,38 +319,6 @@ def draw_seq_graph(
     else:
         intervals = {list(model.edge_dict.keys())[0]: (0, 1)}
 
-    # Add class for calculate percentage of each edge
-    class GraphManager:
-        def __init__(self):
-            self.target_weights = {} # 存储target节点
-            # info = {
-            #     'source_node': {},
-            #     'total_weight': 0
-            # }  # 存储每个target节点的source节点和权重以及总权重
-
-        def add_edge(self, edge, weight, remove_qkv=False):
-            source, target = edge.split('->')
-            if remove_qkv:
-                source = source.replace('.Q', '').replace('.K', '').replace('.V', '')
-                target = target.replace('.Q', '').replace('.K', '').replace('.V', '')
-            if target not in self.target_weights:
-                info = {}
-                info['source_node'] = {source: weight}
-                info['total_weight'] = weight
-                self.target_weights[target] = info
-            else:
-                if source not in self.target_weights[target]['source_node']:    
-                    self.target_weights[target]['source_node'][source] = weight
-                else:
-                    self.target_weights[target]['source_node'][source] += weight
-                self.target_weights[target]['total_weight'] += weight
-        
-        def show_percentage(self):
-            for target, info in self.target_weights.items():
-                print(f"{target} has {len(info['source_node'])} source nodes")
-                for source, weight in info['source_node'].items():
-                    print(f"{source:<12} -> {target:<12} {weight/info['total_weight']:.2%}")
-
     # Draw the sankey for each token position
     sankeys, n_layers = [], 0
     for seq_idx, vert_interval in intervals.items():
@@ -331,6 +343,8 @@ def draw_seq_graph(
             gm.add_edge(label[i], value[i], remove_qkv=True)
         gm.show_percentage()
 
+    if not draw_fig:
+        return None, gm
     if orientation == "h":
         h = max(250 * len(sankeys), 400)
         w = max(50 * n_layers, 600)
@@ -356,4 +370,4 @@ def draw_seq_graph(
     if file_path:
         absolute_path: Path = repo_path_to_abs_path(file_path)
         fig.write_image(str(absolute_path))
-    return fig
+    return fig, gm

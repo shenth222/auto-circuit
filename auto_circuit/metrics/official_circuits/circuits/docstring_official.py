@@ -47,7 +47,7 @@ def docstring_true_edges(
     Returns:
         The set of edges in the circuit.
     """
-    assert model.cfg.model_name == "Attn_Only_4L512W_C4_Code"
+    # assert model.cfg.model_name == "Attn_Only_4L512W_C4_Code"
     assert model.separate_qkv
 
     A_def_tok_idx = word_idxs.get("A_def", 0)

@@ -4,7 +4,8 @@ from pathlib import Path
 from typing import List
 
 import torch as t
-
+import sys
+sys.path.append("/data/shenth/work/auto-circuit")
 from auto_circuit.metrics.completeness_metrics.same_under_knockouts import (
     TaskCompletenessScores,
     measure_same_under_knockouts,
@@ -57,18 +58,19 @@ figs = []
 
 # ------------------------------------ Prune Scores ------------------------------------
 
-compute_prune_scores = False
-save_prune_scores = False
-load_prune_scores = True
+compute_prune_scores = True
+save_prune_scores = True
+load_prune_scores = False
 
 task_prune_scores: TaskPruneScores = defaultdict(dict)
 cache_folder_name = ".prune_scores_cache"
 if compute_prune_scores:
     TASKS: List[Task] = [
+        TASK_DICT["Docstring Component Circuit"]
         # Token Circuits
         # SPORTS_PLAYERS_TOKEN_CIRCUIT_TASK,
         # IOI_TOKEN_CIRCUIT_TASK,
-        DOCSTRING_TOKEN_CIRCUIT_TASK,
+        # DOCSTRING_TOKEN_CIRCUIT_TASK,
         # Component Circuits
         # SPORTS_PLAYERS_COMPONENT_CIRCUIT_TASK,
         # IOI_COMPONENT_CIRCUIT_TASK,
@@ -81,9 +83,9 @@ if compute_prune_scores:
         # CAPITAL_CITIES_PYTHIA_70M_AUTOENCODER_COMPONENT_CIRCUIT_TASK,
     ]
     PRUNE_ALGOS: List[PruneAlgo] = [
-        GROUND_TRUTH_PRUNE_ALGO,
+        # GROUND_TRUTH_PRUNE_ALGO,
         # ACT_MAG_PRUNE_ALGO,
-        RANDOM_PRUNE_ALGO,
+        # RANDOM_PRUNE_ALGO,
         # EDGE_ATTR_PATCH_PRUNE_ALGO,
         # ACDC_PRUNE_ALGO,
         # INTEGRATED_EDGE_GRADS_LOGIT_DIFF_PRUNE_ALGO,
@@ -94,14 +96,14 @@ if compute_prune_scores:
         # SUBNETWORK_EDGE_PROBING_PRUNE_ALGO,
         # CIRCUIT_PROBING_PRUNE_ALGO,
         # SUBNETWORK_TREE_PROBING_PRUNE_ALGO,
-        CIRCUIT_TREE_PROBING_PRUNE_ALGO,
+        # CIRCUIT_TREE_PROBING_PRUNE_ALGO,
         # MSE_CIRCUIT_TREE_PROBING_PRUNE_ALGO,
     ]
     task_prune_scores = run_prune_algos(TASKS, PRUNE_ALGOS)
 if load_prune_scores:
     # 2000 epoch IOI Docstring tensor prune_scores post-kv-cache-fix
     # batch_size=128, batch_count=2, default seed (for both)
-    filename = "task-prune-scores-16-02-2024_23-27-49.pkl"
+    filename = "task-prune-scores-15-03-2025_22-38-19.pkl"
 
     # 1000 epoch Sport Players tensor prune_scores post-kv-cache-fix
     # batch_size=(10, 20), batch_count=(10, 5), default seed
@@ -123,23 +125,24 @@ for task, algo_prune_scores in task_prune_scores.items():
 # task_prune_scores = {docstring_key: task_prune_scores[docstring_key]}
 
 # -------------------------------- Draw Circuit Graphs ---------------------------------
-
-if False:
+from IPython import embed
+embed()
+if True:
     for task_key, algo_prune_scores in task_prune_scores.items():
         # if not task_key.startswith("Docstring"):
         #     continue
         task = TASK_DICT[task_key]
-        if (
-            task.key != SPORTS_PLAYERS_TOKEN_CIRCUIT_TASK.key
-            or task.true_edge_count is None
-        ):
-            continue
+        # if (
+        #     task.key != SPORTS_PLAYERS_TOKEN_CIRCUIT_TASK.key
+        #     or task.true_edge_count is None
+        # ):
+        #     continue
         for algo_key, ps in algo_prune_scores.items():
             algo = PRUNE_ALGO_DICT[algo_key]
             # keys = [GROUND_TRUTH_PRUNE_ALGO.key, CIRCUIT_TREE_PROBING_PRUNE_ALGO.key]
-            keys = [GROUND_TRUTH_PRUNE_ALGO.key]
-            if algo_key not in keys:
-                continue
+            # keys = [GROUND_TRUTH_PRUNE_ALGO.key]
+            # if algo_key not in keys:
+            #     continue
             th = prune_scores_threshold(ps, task.true_edge_count)
             circ_edges = dict([(d, (m.abs() >= th).float()) for d, m in ps.items()])
             print("circ_edge_count", sum([m.sum() for m in circ_edges.values()]))
@@ -147,15 +150,17 @@ if False:
                 [(d, t.where(m.abs() >= th, m, t.zeros_like(m))) for d, m in ps.items()]
             )
             print("task:", task.name, "algo:", algo.name)
-            draw_seq_graph(
+            fig, gm = draw_seq_graph(
                 model=task.model,
                 prune_scores=circ,
                 seq_labels=task.test_loader.seq_labels,
-                show_all_edges=False,
             )
+            absolute_path: Path = repo_path_to_abs_path("figure/figures-12")
+            # Save figure as pdf in figures folder
+            fig.write_image(str(absolute_path / f"{task_key}-{algo_key}.png"))
 
 # ------------------------------ Prune Scores Similarity -------------------------------
-
+exit()
 if True:
     prune_scores_similartity_fig = prune_score_similarities_plotly(
         task_prune_scores, [], ground_truths=True
@@ -166,7 +171,7 @@ if True:
 
 compute_task_completeness_scores = False
 save_task_completeness_scores = False
-load_task_completeness_scores = False
+load_task_completeness_scores = True
 completeness_prune_scores: TaskPruneScores = {}
 
 faithfulness_target = "kl_div"
@@ -190,7 +195,7 @@ if load_task_completeness_scores:
     # IOI Docstring 100 epoch KL completeness
     filename = "task-completeness-prune-scores-20-02-2024_19-15-29.pkl"
     # IOI Docstring 300 epoch KL completeness
-    filename = "task-completeness-prune-scores-23-02-2024_19-54-47.pkl"
+    filename = "kl_div-task-completeness-prune-scores-15-03-2025_22-53-28.pkl"
 
     # for task-prune-scores-16-02-2024_22-22-43.pkl (Sports Players 1000 epochs)
     # Sports Players 100 epoch completeness
@@ -213,6 +218,7 @@ if False:
     figs.append(roc_fig)
 
 # ----------------------------- Prune Metric Measurements ------------------------------
+exit()
 
 compute_prune_metric_measurements = True
 save_prune_metric_measurements = False
@@ -264,9 +270,10 @@ if prune_metric_measurements is not None:
 # -------------------------------------- Figures ---------------------------------------
 
 for i, fig in enumerate(figs):
-    fig.show()
-    folder: Path = repo_path_to_abs_path("figures-12")
+    
+    # fig.show()
+    folder: Path = repo_path_to_abs_path("figure/figures-12")
     # Save figure as pdf in figures folder
-    # fig.write_image(str(folder / f"new {i}.pdf"))
+    fig.write_image(str(folder / f"new {i}.png"))
 
 #%%
