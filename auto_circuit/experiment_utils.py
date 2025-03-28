@@ -37,6 +37,7 @@ def load_tl_model(name: str, device: t.device) -> tl.HookedTransformer:
         fold_ln=True,
         center_writing_weights=True,
         center_unembed=True,
+        trust_remote_code=True
     )
     tl_model.cfg.use_attn_result = True
     tl_model.cfg.use_attn_in = True

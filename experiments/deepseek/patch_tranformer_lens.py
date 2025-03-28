@@ -1,0 +1,10 @@
+import sys
+sys.path.append("/data/shenth/work/auto-circuit")
+import transformer_lens
+
+from loading_from_pretrained_patch import convert_hf_model_config_patch
+transformer_lens.loading_from_pretrained.convert_hf_model_config = convert_hf_model_config_patch
+
+from loading_from_pretrained_patch import get_pretrained_model_config_patch
+transformer_lens.loading_from_pretrained.get_pretrained_model_config = get_pretrained_model_config_patch
+
